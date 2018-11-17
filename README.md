@@ -1,6 +1,6 @@
 # powerML
 
-##Requirements: 
+## Requirements: 
 
 Python packages: tensorflow, keras, ...probably some others too
 
@@ -8,9 +8,9 @@ Other: valgrind (install via homebrew)
 
 
 
-##Instructions: Run make to compile runPythonScript.cpp before use.
+## Instructions: Run make to compile runPythonScript.cpp before use.
 
-##Structure:
+## Structure:
 
 -optimizer.py: Controls everything. Uses MeasurePowerConsumption.powerMoniter. Defines the search space and does a random walk through it. 
 
