@@ -10,7 +10,7 @@ Other: valgrind (install via homebrew)
 
 ## Instructions: 
 
-Run make to compile runPythonScript.cpp before use.
+Run `make` to compile runPythonScript.cpp before use.
 
 ## Structure:
 
