@@ -25,13 +25,14 @@ class optimizer():
             parameters = search_space.get_next_parameter_set()
             #update model with parameters
             #save model to file
-            time, power, accuracy = self.powerMoniter.measure_consumption_of_model(model_filename, data_filename)
-            search_space.update_objectives(power)
-            self.log_record(iteration, time, power, accuracy)
+            training_cost = self.power_moniter.measure_training_efficiency(model_filename, data_filename, config_filename. weights_filename)
+            inference_cost, model_score= self.power_moniter.measure_inference_efficiency(model_filename, data_filename. config_filename, weights_filename)
+            search_space.update_objectives(training_cost, inference_cost, model_score)
+            self.log_record(iteration, training_cost, inference_cost, model_score)
         self.generate_report()
 
     def log_record(self, iteration, power, time, accuracy):
-        #open up a csv and append row
+        
         pass
 
     def generate_report(self):
