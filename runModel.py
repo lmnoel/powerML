@@ -9,8 +9,11 @@ import json
 def load_config(config_file):
     return json.load(config_file)
 
-def save_config(config_file):
-
+def load_model_from_json(model_name):
+    json_file = open(model_name, 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    return model_from_json(loaded_model_json)
 
 def train_model(model_name, data_name, config_name, weights_name):
     '''
@@ -20,7 +23,10 @@ def train_model(model_name, data_name, config_name, weights_name):
     weights_name is an .h5 file 
     config_name is a .json with parameters for fitting/evaluating
     '''
-    model = model_from_json(model_name)
+    json_file = open(model_name, 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    model = load_model_from_json(loaded_model_json)
     # load pima indians dataset
     dataset = np.loadtxt(data_name, delimiter=",")
     #adjust 8 to howver long the dataset is
@@ -40,7 +46,7 @@ def test_model(model_name, data_name, config_name, weights_name):
     weights_name is an .h5 file 
     config_name is a .json with parameters for fitting/evaluating
     '''
-    loaded_model = model_from_json(model_name)
+    loaded_model = load_model_from_json(model_name)
     # load weights into new model
     loaded_model.load_weights(weights_name)
     configs = load_config(config_name)
@@ -50,6 +56,8 @@ def test_model(model_name, data_name, config_name, weights_name):
     X = dataset[:,0:8]
     Y = dataset[:,8]
     score = loaded_model.evaluate(X, Y, verbose=0)
+
+    #save configs now with score to file
     configs['score'] = score
     with open(config_name, 'w') as outfile:
         json.dump(configs, outfile)

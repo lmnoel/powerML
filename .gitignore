@@ -1,0 +1,4 @@
+__pycache__
+cachegrind.out.*
+*.dysm
+*.pyprof
