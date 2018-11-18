@@ -51,21 +51,22 @@ class powerMoniter():
         try:
             with open(config_file, 'r') as jsonfile:
                 configs = json.load(jsonfile)
-                score = configs['score']
+                score = configs['score'][0]
         except:
             raise Exception('Unable to load config file to read score of model')
         return cost, score
 
     def measure_model_efficiency(self, type_, model_file, data_file, config_file, weights_file):
+
         log_file_name = 'temp_log'
         try:
-             subprocess.check_output(['valgrind', '--tool=cachegrind',
+            subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
                                             '--log-file={}'.format(log_file_name),
                                               './runPythonScript', 'runModel.py' , type_,
                                               model_file, data_file, config_file, weights_file, ' >', log_file_name])
+
         except:
-            print("failed to run cachegrind")
-            return
+            raise Exception('failed to run cachegrind')
         try:
             with open(log_file_name, 'r') as file:
                 output = file.read()
