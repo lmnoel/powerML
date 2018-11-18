@@ -64,6 +64,7 @@ def test_model(model_name, data_name, config_name, weights_name):
     
 
 if __name__ == '__main__':
+    print('args:',sys.argv)
     if sys.argv[1] == 'train':
         print(train_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]))
     elif sys.argv[1] == 'test':

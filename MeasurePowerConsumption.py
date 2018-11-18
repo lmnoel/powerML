@@ -49,8 +49,9 @@ class powerMoniter():
     def measure_inference_efficiency(self, model_file, data_file, config_file, weights_file):
         cost =  self.measure_model_efficiency('test', model_file, data_file, config_file, weights_file)
         try:
-            configs = json.load(config_file)
-            score = configs['score']
+            with open(config_file, 'r') as jsonfile:
+                configs = json.load(jsonfile)
+                score = configs['score']
         except:
             raise Exception('Unable to load config file to read score of model')
         return cost, score
@@ -59,8 +60,8 @@ class powerMoniter():
         log_file_name = 'temp_log'
         try:
              subprocess.check_output(['valgrind', '--tool=cachegrind',
-                                            '--log-file={}'.format(log_file_name), type_,
-                                              './runPythonScript', 'runModel.py' , 
+                                            '--log-file={}'.format(log_file_name),
+                                              './runPythonScript', 'runModel.py' , type_,
                                               model_file, data_file, config_file, weights_file, ' >', log_file_name])
         except:
             print("failed to run cachegrind")
