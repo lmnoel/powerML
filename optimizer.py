@@ -4,6 +4,9 @@ from MeasurePowerConsumption import powerMoniter
 from keras.models import Model
 import json
 import os
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+import numpy as np
 
 class searchSpace():
     def __init__(self, model_type):
@@ -61,12 +64,12 @@ class searchSpace():
 
 class optimizer():
     def __init__(self):
-        self.current_iteration = 0
         self.iterations = 20 #tbd
         self.power_moniter = powerMoniter()
         self.config_filename = 'configs.json'
         self.weights_filename = 'model_weights.h5'
         self.model_filename = 'model.json'
+        self.records = []
         
 
     def run(self, model_type, data_filename):
@@ -85,11 +88,38 @@ class optimizer():
             self.log_record(iteration, training_cost, inference_cost, model_score)
         self.generate_report()
 
-    def log_record(self, iteration, power, time, accuracy):
-        
-        pass
+    def log_record(self, iteration, training_cost, inference_cost, model_score):
+        self.records.append((iteration, training_cost, inference_cost, model_score))
+
+    @staticmethod
+    def get_fig_name(self):
+        counter = 0
+        fig_name = 'figure_0.png'
+        while os.path.isfile(fig_name):
+            counter += 1
+            fig_name = 'figure_{}.png'.format(counter)
+        return fig_name
 
     def generate_report(self):
-        #generate the 3d image
+        '''
+        Not 100% confident this will work exactly as written.
+        But intended behaviour is to save a 3d scatter plot to file.
+        Iterations on x axis, training_cost (red) and inference_cost (blue) on y axis.
+        And model score on z axis.
+        '''
+        #From here: https://matplotlib.org/2.1.1/gallery/mplot3d/scatter3d.html
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+    
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, inference_cost, model_score, c='r', marker='o')
+            ax.scatter(iteration, training_cost, model_score, c='b', marker='o')
+
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Cost (inference in red, training in blue)')
+        ax.set_zlabel('Accuracy')
+
+        plt.savefig(self.get_fig_name())
         pass
 
