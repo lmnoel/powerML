@@ -9,6 +9,7 @@ import os
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 class searchSpace():
     def __init__(self, model_type):
@@ -107,6 +108,14 @@ class optimizer():
             fig_name = 'figure_{}.png'.format(counter)
         return fig_name
 
+    def get_file_name(self):
+        counter = 0
+        file_name = 'report_0.csv'
+        while os.path.isfile(file_name):
+            counter += 1
+            file_name = 'report_{}.csv'.format(counter)
+        return file_name
+
     def generate_report(self):
         '''
         Save a 3d scatter plot to file.
@@ -116,16 +125,16 @@ class optimizer():
         #From here: https://matplotlib.org/2.1.1/gallery/mplot3d/scatter3d.html
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-
         for record in self.records:
             iteration, training_cost, inference_cost, model_score = record
             ax.scatter(iteration, inference_cost, model_score, c='r', marker='o')
             ax.scatter(iteration, training_cost, model_score, c='b', marker='o')
 
         ax.set_xlabel('Iterations')
-        ax.set_ylabel('Cost (inference in red, training in blue)')
+        ax.set_ylabel('Cost--inference in red, training in blue \n(Processor Cycles)')
         ax.set_zlabel('Accuracy')
 
         plt.savefig(self.get_fig_name())
-        pass
+        df = pd.DataFrame(self.records)
+        df.to_csv(self.get_file_name())
 
