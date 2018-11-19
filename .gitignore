@@ -1,3 +1,4 @@
+temp_log
 __pycache__
 cachegrind.out.*
 *.dysm
