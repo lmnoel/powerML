@@ -127,8 +127,8 @@ class optimizer():
         ax = fig.add_subplot(111, projection='3d')
         for record in self.records:
             iteration, training_cost, inference_cost, model_score = record
-            ax.scatter(iteration, inference_cost, model_score, c='r', marker='o')
-            ax.scatter(iteration, training_cost, model_score, c='b', marker='o')
+            ax.scatter(iteration, inference_cost, model_score, c='r', marker='o', alpha=model_score ** 3)
+            ax.scatter(iteration, training_cost, model_score, c='b', marker='o', alpha=model_score ** 3)
 
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Cost--inference in red, training in blue \n(Processor Cycles)')
