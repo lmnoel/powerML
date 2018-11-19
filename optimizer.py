@@ -6,8 +6,6 @@ from keras.models import Sequential
 from keras.layers import Dense
 import json
 import os
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -123,6 +121,8 @@ class optimizer():
         And model score on z axis.
         '''
         #From here: https://matplotlib.org/2.1.1/gallery/mplot3d/scatter3d.html
+        from mpl_toolkits.mplot3d import Axes3D
+        import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         for record in self.records:

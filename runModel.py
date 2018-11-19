@@ -76,7 +76,9 @@ def test_model(model_name, data_name, config_name, weights_name):
 
     
 if sys.argv[1] == 'train':
+    assert(len(sys.argv) == 6), 'Incorrect number of arguments'
     train_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
 elif sys.argv[1] == 'test':
+    assert(len(sys.argv) == 6), 'Incorrect number of arguments'
     test_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
 

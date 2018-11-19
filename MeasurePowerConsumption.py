@@ -61,9 +61,9 @@ class powerMoniter():
         log_file_name = 'temp_log'
         try:
             subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
-                                            '--log-file={}'.format(log_file_name),
+                                                '--log-file={}'.format(log_file_name),
                                               './runPythonScript', 'runModel.py' , type_,
-                                              model_file, data_file, config_file, weights_file, ' >', log_file_name])
+                                              model_file, data_file, config_file, weights_file])
 
         except:
             raise Exception('failed to run cachegrind')
