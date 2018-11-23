@@ -1,5 +1,6 @@
 from keras.models import model_from_json
 from keras.preprocessing.image import ImageDataGenerator
+from keras.utils import to_categorical
 import numpy as np
 import sys
 import json
@@ -35,8 +36,6 @@ def train_model(model_name, data_name, config_name, weights_name, model_type):
     config_name is a .json with parameters for fitting/evaluating
     '''
 
-    print('check')
-
     model = load_model_from_json(model_name)
     configs = load_config(config_name)
     model.compile(loss=configs['loss'], optimizer=configs['optimizer'], metrics=['accuracy'])
@@ -45,10 +44,18 @@ def train_model(model_name, data_name, config_name, weights_name, model_type):
 
         
         # load pima indians dataset
-        dataset = np.loadtxt(data_name, delimiter=",")
-        #adjust 8 to howver long the dataset is
-        X = dataset[:,0:8]
-        Y = dataset[:,8]
+        if data_name == 'dense_dataset.csv':
+            dataset = np.loadtxt(data_name, delimiter=",")
+            #adjust 8 to howver long the dataset is
+            X = dataset[:,0:8]
+            Y = dataset[:,8]
+
+        elif data_name == 'mnist':
+            from keras.datasets import mnist
+            (X, Y), _ = mnist.load_data()
+            Y = to_categorical(Y, num_classes=10)
+
+        model.fit(X, Y, epochs=configs['epochs'], batch_size=configs['batch_size'], verbose=1)
         
     if model_type == 'conv':
 
@@ -92,12 +99,22 @@ def test_model(model_name, data_name, config_name, weights_name, model_type):
     loaded_model.compile(loss=configs['loss'], optimizer=configs['optimizer'], metrics=['accuracy'])
 
     if model_type == 'dense':
-        
-        dataset = np.loadtxt(data_name, delimiter=",")
-        #adjust 8 to howver long the dataset is
-        X = dataset[:,0:8]
-        Y = dataset[:,8]
-        score = loaded_model.evaluate(X, Y, verbose=0)
+
+        if data_name == 'dense_dataset.csv':
+            dataset = np.loadtxt(data_name, delimiter=",")
+            #adjust 8 to howver long the dataset is
+            X = dataset[:,0:8]
+            Y = dataset[:,8]
+        elif data_name == 'mnist':
+            from keras.datasets import mnist
+            _, (X, Y) = mnist.load_data()
+            Y = to_categorical(Y, num_classes=10)
+        score = loaded_model.evaluate(X, Y, verbose=1)
+
+        print(score)
+
+        pred=loaded_model.predict(X)
+
 
     if model_type == 'conv':
 
@@ -111,7 +128,6 @@ def test_model(model_name, data_name, config_name, weights_name, model_type):
             class_mode='categorical')
 
         score = loaded_model.evaluate_generator(generator=test_generator, steps=len(test_generator))
-        score = [score[1], score[0]]
 
     #save configs now with score to file
     configs['score'] = score
@@ -123,11 +139,11 @@ def test_model(model_name, data_name, config_name, weights_name, model_type):
     with open(config_name, 'w') as outfile:
         json.dump(configs, outfile)
 
-    
-if sys.argv[1] == 'train':
-    assert(len(sys.argv) == 7), 'Incorrect number of arguments'
-    train_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
-elif sys.argv[1] == 'test':
-    assert(len(sys.argv) == 7), 'Incorrect number of arguments'
-    test_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
+if __name__=="__main__":
+    if sys.argv[1] == 'train':
+        assert(len(sys.argv) == 7), 'Incorrect number of arguments'
+        train_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
+    elif sys.argv[1] == 'test':
+        assert(len(sys.argv) == 7), 'Incorrect number of arguments'
+        test_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
 

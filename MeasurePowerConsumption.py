@@ -51,7 +51,8 @@ class powerMonitor():
         try:
             with open(config_file, 'r') as jsonfile:
                 configs = json.load(jsonfile)
-                score = configs['score'][0]
+                # The first element of model.evaluate() in Keras is loss, so we choose the second to get accuracy
+                score = configs['score'][1]
         except:
             raise Exception('Unable to load config file to read score of model')
         return cost, score
@@ -61,17 +62,27 @@ class powerMonitor():
         log_file_name = 'temp_log'
 
 
-        try:
+        # try:
             # subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
             #                                     '--log-file={}'.format(log_file_name),
             #                                   'python', 'runModel.py' , type_,
             #                                   model_file, data_file, config_file, weights_file, model_type])
 
-            subprocess.check_output(['python', 'runModel.py' , type_,
-                                              model_file, data_file, config_file, weights_file, model_type])
+        from runModel import test_model, train_model
 
-        except:
-            raise Exception('failed to run cachegrind')
+        if type_ == 'train':
+
+            train_model(model_file, data_file, config_file, weights_file, model_type)
+
+        elif type_ == 'test':
+
+            test_model(model_file, data_file, config_file, weights_file, model_type)
+
+            # subprocess.check_output(['python', 'runModel.py' , type_,
+            #                                   model_file, data_file, config_file, weights_file, model_type])
+
+        # except:
+        #     raise Exception('failed to run cachegrind')
         # try:
         #     with open(log_file_name, 'r') as file:
         #         output = file.read()
