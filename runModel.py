@@ -6,8 +6,6 @@ import sys
 import json
 import os
 
-#Reference for loading/saving models: 
-#https://machinelearningmastery.com/save-load-keras-deep-learning-models/
 
 def load_config(config_file):
     try:
@@ -18,6 +16,7 @@ def load_config(config_file):
     except:
         raise Exception('Unable to load config_file')
 
+
 def load_model_from_json(model_name):
     try:
         json_file = open(model_name, 'r')
@@ -26,6 +25,7 @@ def load_model_from_json(model_name):
         return model_from_json(loaded_model_json)
     except:
         raise Exception('Unable to load model file')
+
 
 def train_model(model_name, data_name, config_name, weights_name, model_type):
     '''
@@ -42,45 +42,42 @@ def train_model(model_name, data_name, config_name, weights_name, model_type):
     
     if model_type == 'dense':
 
-        
-        # load pima indians dataset
-        if data_name == 'dense_dataset.csv':
-            dataset = np.loadtxt(data_name, delimiter=",")
-            #adjust 8 to howver long the dataset is
-            X = dataset[:,0:8]
-            Y = dataset[:,8]
-
-        elif data_name == 'mnist':
+        if data_name == 'mnist':
             from keras.datasets import mnist
             (X, Y), _ = mnist.load_data()
             Y = to_categorical(Y, num_classes=10)
+
+        elif data_name == 'mnist_small':
+            from keras.datasets import mnist
+            (X, Y), _ = mnist.load_data()
+            indices = np.where(Y < 2)[0][:50]
+            Y = Y[indices]
+            X = X[indices, :, :]
+            Y = to_categorical(Y, num_classes=2)
 
         model.fit(X, Y, epochs=configs['epochs'], batch_size=configs['batch_size'], verbose=1)
         
     if model_type == 'conv':
 
+        if data_name == 'mnist':
+            from keras.datasets import mnist
+            (X, Y), _ = mnist.load_data()
+            Y = to_categorical(Y, num_classes=10)
+            X = X.reshape(60000, 28, 28, 1)
 
-        train_datagen = ImageDataGenerator(
-            data_format='channels_last',
-            vertical_flip=True,
-            horizontal_flip=True)
+        elif data_name == 'mnist_small':
+            from keras.datasets import mnist
+            (X, Y), _ = mnist.load_data()
+            indices = np.where(Y < 2)[0][:50]
+            Y = Y[indices]
+            X = X[indices, :, :]
+            Y = to_categorical(Y, num_classes=2)
+            X = X.reshape(50, 28, 28, 1)
 
-        train_generator = train_datagen.flow_from_directory(
-            data_name+'/Train',
-            target_size=(224,224),
-            batch_size=configs['batch_size'],
-            class_mode='categorical')
-
-        history = model.fit_generator(
-            train_generator,
-            steps_per_epoch = 15,
-            epochs = configs['epochs'],
-            shuffle = True,
-            workers = 4,
-            verbose=1
-            )
+        model.fit(X, Y, epochs=configs['epochs'], batch_size=configs['batch_size'], verbose=1)
 
     model.save_weights(weights_name)
+
 
 def test_model(model_name, data_name, config_name, weights_name, model_type):
     '''
@@ -100,36 +97,40 @@ def test_model(model_name, data_name, config_name, weights_name, model_type):
 
     if model_type == 'dense':
 
-        if data_name == 'dense_dataset.csv':
-            dataset = np.loadtxt(data_name, delimiter=",")
-            #adjust 8 to howver long the dataset is
-            X = dataset[:,0:8]
-            Y = dataset[:,8]
-        elif data_name == 'mnist':
+        if data_name == 'mnist':
             from keras.datasets import mnist
             _, (X, Y) = mnist.load_data()
             Y = to_categorical(Y, num_classes=10)
+
+        elif data_name == 'mnist_small':
+            from keras.datasets import mnist
+            (X, Y), _ = mnist.load_data()
+            indices = np.where(Y < 2)[0][:100]
+            Y = Y[indices]
+            X = X[indices, :, :]
+            Y = to_categorical(Y, num_classes=2)
         score = loaded_model.evaluate(X, Y, verbose=1)
-
-        print(score)
-
-        pred=loaded_model.predict(X)
-
 
     if model_type == 'conv':
 
-        test_datagen = ImageDataGenerator(
-            data_format='channels_last')
+        if data_name == 'mnist':
+            from keras.datasets import mnist
+            _, (X, Y) = mnist.load_data()
+            Y = to_categorical(Y, num_classes=10)
+            X = X.reshape(10000, 28, 28, 1)
 
-        test_generator = test_datagen.flow_from_directory(
-            data_name+'/Test',
-            target_size=(224,224),
-            batch_size=configs['batch_size'],
-            class_mode='categorical')
+        elif data_name == 'mnist_small':
+            from keras.datasets import mnist
+            _, (X, Y) = mnist.load_data()
+            indices = np.where(Y < 2)[0][:20]
+            Y = Y[indices]
+            X = X[indices, :, :]
+            Y = to_categorical(Y, num_classes=2)
+            X = X.reshape(20, 28, 28, 1)
 
-        score = loaded_model.evaluate_generator(generator=test_generator, steps=len(test_generator))
+        score = loaded_model.evaluate(X, Y, verbose=1)
 
-    #save configs now with score to file
+    # save configs now with score to file
     configs['score'] = score
 
     try:

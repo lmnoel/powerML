@@ -42,12 +42,11 @@ class powerMonitor():
                l3_cache_accesses * self.cache_miss_weights['l3'] +
                memory_accesses * self.cache_miss_weights['memory'])
 
-
-    def measure_training_efficiency(self, model_file, data_file, config_file, weights_file, model_type):
-        return self.measure_model_efficiency('train', model_file, data_file, config_file, weights_file, model_type)
+    def measure_training_efficiency(self, model_file, data_file, config_file, weights_file, model_type, cost):
+        return self.measure_model_efficiency('train', model_file, data_file, config_file, weights_file, model_type, cost)
         
-    def measure_inference_efficiency(self, model_file, data_file, config_file, weights_file, model_type):
-        cost =  self.measure_model_efficiency('test', model_file, data_file, config_file, weights_file, model_type)
+    def measure_inference_efficiency(self, model_file, data_file, config_file, weights_file, model_type, cost):
+        cost =  self.measure_model_efficiency('test', model_file, data_file, config_file, weights_file, model_type, cost)
         try:
             with open(config_file, 'r') as jsonfile:
                 configs = json.load(jsonfile)
@@ -57,40 +56,41 @@ class powerMonitor():
             raise Exception('Unable to load config file to read score of model')
         return cost, score
 
-    def measure_model_efficiency(self, type_, model_file, data_file, config_file, weights_file, model_type):
+    def measure_model_efficiency(self, type_, model_file, data_file, config_file, weights_file, model_type, cost):
 
         log_file_name = 'temp_log'
 
+        if cost == True:
 
-        # try:
-            # subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
-            #                                     '--log-file={}'.format(log_file_name),
-            #                                   'python', 'runModel.py' , type_,
-            #                                   model_file, data_file, config_file, weights_file, model_type])
+            try:
+                subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
+                                                    '--log-file={}'.format(log_file_name),
+                                                  'python', 'runModel.py' , type_,
+                                                  model_file, data_file, config_file, weights_file, model_type])
 
-        from runModel import test_model, train_model
+            except:
+                raise Exception('failed to run cachegrind')
+            try:
+                with open(log_file_name, 'r') as file:
+                    output = file.read()
+                os.remove(log_file_name)
+            except:
+                print('unable to load log file')
 
-        if type_ == 'train':
+            try:
+                return self.return_weighted_cycles(output)
+            except:
+                raise Exception('processorProfile is invalid')
 
-            train_model(model_file, data_file, config_file, weights_file, model_type)
+        else:
 
-        elif type_ == 'test':
+            from runModel import test_model, train_model
 
-            test_model(model_file, data_file, config_file, weights_file, model_type)
+            if type_ == 'train':
 
-            # subprocess.check_output(['python', 'runModel.py' , type_,
-            #                                   model_file, data_file, config_file, weights_file, model_type])
+                train_model(model_file, data_file, config_file, weights_file, model_type)
 
-        # except:
-        #     raise Exception('failed to run cachegrind')
-        # try:
-        #     with open(log_file_name, 'r') as file:
-        #         output = file.read()
-        #     os.remove(log_file_name)
-        # except:
-        #     print('unable to load log file')
-        
-        # try:
-        #     return self.return_weighted_cycles(output)
-        # except:
-        #     raise Exception('processorProfile is invalid')
+            elif type_ == 'test':
+
+                test_model(model_file, data_file, config_file, weights_file, model_type)
+
