@@ -2,10 +2,10 @@ import subprocess
 import os
 import json
 #https://www.7-cpu.com/cpu/Broadwell.html
-class powerMoniter():
+class powerMonitor():
     processor_profiles = {'core_i5_broadwell_2_7ghz':{'l1d':4.5,'l2':12, 'l3':38, 'memory':38}}
     def __init__(self, processorProfile='core_i5_broadwell_2_7ghz'):
-        self.cache_miss_weights = powerMoniter.processor_profiles[processorProfile]
+        self.cache_miss_weights = powerMonitor.processor_profiles[processorProfile]
 
     @staticmethod
     def parse_number_from_line(line, skip_parens):
@@ -42,39 +42,55 @@ class powerMoniter():
                l3_cache_accesses * self.cache_miss_weights['l3'] +
                memory_accesses * self.cache_miss_weights['memory'])
 
-
-    def measure_training_efficiency(self, model_file, data_file, config_file, weights_file):
-        return self.measure_model_efficiency('train', model_file, data_file, config_file, weights_file)
+    def measure_training_efficiency(self, model_file, data_file, config_file, weights_file, model_type, cost):
+        return self.measure_model_efficiency('train', model_file, data_file, config_file, weights_file, model_type, cost)
         
-    def measure_inference_efficiency(self, model_file, data_file, config_file, weights_file):
-        cost =  self.measure_model_efficiency('test', model_file, data_file, config_file, weights_file)
+    def measure_inference_efficiency(self, model_file, data_file, config_file, weights_file, model_type, cost):
+        cost =  self.measure_model_efficiency('test', model_file, data_file, config_file, weights_file, model_type, cost)
         try:
             with open(config_file, 'r') as jsonfile:
                 configs = json.load(jsonfile)
-                score = configs['score'][0]
+                # The first element of model.evaluate() in Keras is loss, so we choose the second to get accuracy
+                score = configs['score'][1]
         except:
             raise Exception('Unable to load config file to read score of model')
         return cost, score
 
-    def measure_model_efficiency(self, type_, model_file, data_file, config_file, weights_file):
+    def measure_model_efficiency(self, type_, model_file, data_file, config_file, weights_file, model_type, cost):
 
         log_file_name = 'temp_log'
-        try:
-            subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
-                                                '--log-file={}'.format(log_file_name),
-                                              './runPythonScript', 'runModel.py' , type_,
-                                              model_file, data_file, config_file, weights_file])
 
-        except:
-            raise Exception('failed to run cachegrind')
-        try:
-            with open(log_file_name, 'r') as file:
-                output = file.read()
-            os.remove(log_file_name)
-        except:
-            print('unable to load log file')
-        
-        try:
-            return self.return_weighted_cycles(output)
-        except:
-            raise Exception('processorProfile is invalid')
+        if cost == True:
+
+            try:
+                subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
+                                                    '--log-file={}'.format(log_file_name),
+                                                  'python', 'runModel.py' , type_,
+                                                  model_file, data_file, config_file, weights_file, model_type])
+
+            except:
+                raise Exception('failed to run cachegrind')
+            try:
+                with open(log_file_name, 'r') as file:
+                    output = file.read()
+                os.remove(log_file_name)
+            except:
+                print('unable to load log file')
+
+            try:
+                return self.return_weighted_cycles(output)
+            except:
+                raise Exception('processorProfile is invalid')
+
+        else:
+
+            from runModel import test_model, train_model
+
+            if type_ == 'train':
+
+                train_model(model_file, data_file, config_file, weights_file, model_type)
+
+            elif type_ == 'test':
+
+                test_model(model_file, data_file, config_file, weights_file, model_type)
+
