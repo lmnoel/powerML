@@ -24,11 +24,11 @@ test.bayesian_opt(iterations=3)
 
 
 # Choose model type and dataset
-test = Optimizer(model_type='dense', data_filename='mnist_small', epochs=1, cost=True)
-
+test = Optimizer(model_type='dense', data_filename='mnist', epochs=1, cost=True)
+print("loaded test")
 # Run tests
 result = test.bayesian_opt(iterations=1)
-
+print('finished running bayesian_opt')
 
 
 # TODO

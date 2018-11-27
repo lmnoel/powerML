@@ -26,6 +26,9 @@ class powerMonitor():
         return int(number_string)
 
     def return_weighted_cycles(self, output):
+        print("==========OUTPUT BEGIN==========:")
+        print(output)
+        print("==========OUTPUT END==========:")
         l1_cache_accesses, l3_cache_accesses, memory_accesses = None, None, None
         for line in output.split('\n'):
             if 'D   refs' in line:
@@ -65,7 +68,7 @@ class powerMonitor():
             try:
                 subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
                                                     '--log-file={}'.format(log_file_name),
-                                                  'python', 'runModel.py' , type_,
+                                                  './runPythonScript', 'runModel.py' , type_,
                                                   model_file, data_file, config_file, weights_file, model_type])
 
             except:

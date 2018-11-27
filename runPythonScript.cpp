@@ -20,9 +20,10 @@ std::string exec(const char* cmd) {
 int main(int argc, char** argv)
 {
     char buffer[200];
-    sprintf(buffer, "python3 %s %s %s %s %s %s \n", argv[argc - 6],argv[argc - 5], 
-                                                    argv[argc - 4], argv[argc - 3], 
-                                                    argv[argc - 2], argv[argc - 1]);
+    sprintf(buffer, "python3 %s %s %s %s %s %s %s \n", argv[argc - 7], argv[argc - 6], 
+                                                       argv[argc - 5], 
+                                                       argv[argc - 4], argv[argc - 3], 
+                                                       argv[argc - 2], argv[argc - 1]);
     std::string output = exec(buffer);
     return 0;
 }

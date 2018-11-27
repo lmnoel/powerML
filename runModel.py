@@ -35,11 +35,12 @@ def train_model(model_name, data_name, config_name, weights_name, model_type):
     weights_name is an .h5 file 
     config_name is a .json with parameters for fitting/evaluating
     '''
-
+    print('model_name, data_name, config_name, weights_name, model_type')
+    print(model_name, data_name, config_name, weights_name, model_type)
     model = load_model_from_json(model_name)
     configs = load_config(config_name)
     model.compile(loss=configs['loss'], optimizer=configs['optimizer'], metrics=['accuracy'])
-    
+    print('training model')
     if model_type == 'dense':
 
         if data_name == 'mnist':
@@ -77,6 +78,7 @@ def train_model(model_name, data_name, config_name, weights_name, model_type):
         model.fit(X, Y, epochs=configs['epochs'], batch_size=configs['batch_size'], verbose=1)
 
     model.save_weights(weights_name)
+    print('done training model')
 
 
 def test_model(model_name, data_name, config_name, weights_name, model_type):
@@ -87,7 +89,9 @@ def test_model(model_name, data_name, config_name, weights_name, model_type):
     weights_name is an .h5 file 
     config_name is a .json with parameters for fitting/evaluating
     '''
-
+    print('testing model')
+    print('model_name, data_name, config_name, weights_name, model_type:')
+    print(model_name, data_name, config_name, weights_name, model_type)
     loaded_model = load_model_from_json(model_name)
     # load weights into new model
     loaded_model.load_weights(weights_name)
@@ -139,8 +143,11 @@ def test_model(model_name, data_name, config_name, weights_name, model_type):
         pass
     with open(config_name, 'w') as outfile:
         json.dump(configs, outfile)
+    print('done testing model')
 
 if __name__=="__main__":
+    print('in main of runModel.py')
+    print('sys.argv is:', sys.argv)
     if sys.argv[1] == 'train':
         assert(len(sys.argv) == 7), 'Incorrect number of arguments'
         train_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
