@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 from hyperopt import hp, tpe, fmin
 import sys
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d, Axes3D
 
 
 class SearchSpace:
@@ -65,7 +67,7 @@ class SearchSpace:
 
             if num_layers is None:
                 # Select random number of layers
-                max_layers = 10
+                max_layers = 5
                 num_layers = np.random.randint(1, max_layers)
 
             start_layer_width = 16
@@ -396,16 +398,7 @@ class Optimizer:
         """
         self.records.append((iteration, training_cost, inference_cost, model_score))
 
-    def generate_report(self):
-        """
-        Save a 3d scatter plot to file.
-        Iterations on x axis, training_cost (red) and inference_cost (blue) on y axis.
-        And model score on z axis.
-        """
-        # From here: https://matplotlib.org/2.1.1/gallery/mplot3d/scatter3d.html
-        # from mpl_toolkits.mplot3d import Axes3D
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import axes3d, Axes3D
+    def generate_all_axes_fig(self):
         fig = plt.figure()
         ax = Axes3D(fig)
         #ax = fig.add_subplot(111, projection='3d')
@@ -417,10 +410,61 @@ class Optimizer:
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Processor Cycles')
         ax.set_zlabel('Accuracy')
+        ax.set_title('{} network, All Axes', self.model_type)
 
-        plt.savefig(get_fig_name())
+        plt.savefig(get_fig_name("all_axes"))
+
+    def generate_iteration_x_train_cost(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, training_cost, c='b', marker='o')
+
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Processor Cycles')
+        ax.set_title('{} network, Iterations x Training Processor Cycles', self.model_type)
+        plt.savefig(get_fig_name("iteration_x_cost"))
+    
+    def generate_iteration_x_inference_cost(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, inference_cost, c='r', marker='o')
+
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Processor Cycles')
+        ax.set_title('{} network, Iterations x Inference Processor Cycles', self.model_type)
+        plt.savefig(get_fig_name("iteration_x_cost"))
+
+    def generate_iteration_x_score(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, model_score, c='k', marker='o')
+
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Model Accuracy')
+        ax.set_title('{} network, Iterations x Model Accuracy', self.model_type)
+        plt.savefig(get_fig_name("iteration_x_score"))
+
+    def generate_report(self):
+        """
+        Save a 3d scatter plot to file.
+        Iterations on x axis, training_cost (red) and inference_cost (blue) on y axis.
+        And model score on z axis.
+        """
+        # From here: https://matplotlib.org/2.1.1/gallery/mplot3d/scatter3d.html
+        # from mpl_toolkits.mplot3d import Axes3D
+        self.generate_all_axes_fig()
+        self.generate_iteration_x_score()
+        self.generate_iteration_x_cost()
+        
         df = pd.DataFrame(self.records)
         df.to_csv(get_file_name())
+
 
 
 def get_architecture_file_name():
@@ -453,7 +497,7 @@ def get_file_name():
     return file_name
 
 
-def get_fig_name():
+def get_fig_name(keyword):
     """
     Find appropriate name for the next figure file.
     :return:
@@ -461,10 +505,10 @@ def get_fig_name():
     counter = 0
     if not os.path.exists("figures/"):
         os.mkdir("figures/")
-    fig_name = 'figures/figure_0.png'
+    fig_name = 'figures/{}_figure_0.png'.format(keyword)
     while os.path.isfile(fig_name):
         counter += 1
-        fig_name = 'figures/figure_{}.png'.format(counter)
+        fig_name = 'figures/{}_figure_{}.png'.format(keyword, counter)
     return fig_name
 
 

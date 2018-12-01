@@ -39,7 +39,7 @@ def train_model(model_name, data_name, config_name, weights_name, model_type):
     model = load_model_from_json(model_name)
     configs = load_config(config_name)
     model.compile(loss=configs['loss'], optimizer=configs['optimizer'], metrics=['accuracy'])
-    if model_type == 'dense':
+    if model_type == 'dense_rectangle' or model_type == 'dense_triangle':
 
         if data_name == 'mnist':
             from keras.datasets import mnist
@@ -94,7 +94,7 @@ def test_model(model_name, data_name, config_name, weights_name, model_type):
     configs = load_config(config_name)
     loaded_model.compile(loss=configs['loss'], optimizer=configs['optimizer'], metrics=['accuracy'])
 
-    if model_type == 'dense':
+    if model_type == 'dense_rectangle' or model_type == 'dense_triangle':
 
         if data_name == 'mnist':
             from keras.datasets import mnist
