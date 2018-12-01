@@ -16,6 +16,7 @@ from hyperopt import hp, tpe, fmin
 import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d, Axes3D
+import statistics
 
 
 class SearchSpace:
@@ -224,6 +225,9 @@ class Optimizer:
         assert self.alpha >= 0 and self.beta >= 0, 'alpha and beta must be greater than 0.0'
         self.gamma = 1 - alpha - beta
         assert self.gamma >= 0, 'alpha + beta must be less than 1.0'
+        self.RECORDS_SCORE = 3
+        self.RECORDS_TRAIN_COST = 1
+        self.RECORDS_INFERENCE_COST = 2
 
     def run(self, iterations, num_layers=None, layer_widths=None, num_filters=None, filter_sizes=None, batch_size=None):
         """
@@ -280,6 +284,7 @@ class Optimizer:
         # Generate a plot and csv record of costs and accuracies for all iterations
         self.generate_report()
 
+
     def bayesian_opt(self, iterations):
         """
         Function for managing a Bayesian hyperparameter optimization strategy.  We define a hyperparameter space to
@@ -330,6 +335,23 @@ class Optimizer:
 
         return 'Optimized architecture: ' + str(tpe_best)
 
+    def get_weights(self):
+        """
+        Computes weights for the score and cost components of the objective function.
+        The idea here is that we should weight the accuracy higher until it begins to
+        converge, then weight the cost (processor cycles) higher.
+        :return: weight of the cost and score components.
+        """
+        scores = [i[self.RECORDS_SCORE] for i in self.records]
+        accuracy_stdev = statistics.stdev(scores)
+        accuracy_delta_from_stddev = abs(accuracy_stdev - self.records[-1][self.RECORDS_SCORE])
+        if accuracy_delta_from_stddev == 0:
+            cost_weight = 0.5
+        else:
+            cost_weight = min(1 / accuracy_delta_from_stddev, 1.0)
+        score_weight = 1.0 - cost_weight
+        return cost_weight, score_weight
+
     def objective_function(self, kwargs):
         """
         Objective function for Bayesian optimization strategy
@@ -379,13 +401,11 @@ class Optimizer:
         if self.iteration_index == 1:
             return -1.0 * model_score
         else:
-            RECORDS_SCORE = 3
-            RECORDS_TRAIN_COST = 1
-            RECORDS_INFERENCE_COST = 2
-            model_score_delta = self.records[-1][RECORDS_SCORE] - self.records[-2][RECORDS_SCORE]
-            train_cost_delta = self.records[-1][RECORDS_TRAIN_COST] - self.records[-2][RECORDS_TRAIN_COST]
-            inference_cost_delta = self.records[-1][RECORDS_INFERENCE_COST] - self.records[-2][RECORDS_INFERENCE_COST]
-            return -1.0 * self.gamma * model_score_delta + train_cost_delta * self.alpha + inference_cost_delta * self.beta
+            cost_weight, score_weight = self.get_weights()
+            model_score_delta = self.records[-1][self.RECORDS_SCORE] - self.records[-2][self.RECORDS_SCORE]
+            train_cost_delta = self.records[-1][self.RECORDS_TRAIN_COST] - self.records[-2][self.RECORDS_TRAIN_COST]
+            inference_cost_delta = self.records[-1][self.RECORDS_INFERENCE_COST] - self.records[-2][self.RECORDS_INFERENCE_COST]
+            return score_weight * (-1.0 * self.gamma * model_score_delta) + cost_weight * (train_cost_delta * self.alpha + inference_cost_delta * self.beta)
 
 
     def log_record(self, iteration, training_cost, inference_cost, model_score):
