@@ -1,10 +1,12 @@
 import subprocess
 import os
 import json
+from glob import glob
 #https://www.7-cpu.com/cpu/Broadwell.html
 class powerMonitor():
-    processor_profiles = {'core_i5_broadwell_2_7ghz':{'l1d':4.5,'l2':12, 'l3':38, 'memory':38}}
-    def __init__(self, processorProfile='core_i5_broadwell_2_7ghz'):
+    processor_profiles = {'core_i5_broadwell_2_7ghz':{'l1d':4.5,'l2':12, 'l3':38, 'memory':38},
+                          'xeon_x5650_2_66ghz':{'l1d':4,'l2':10, 'l3':41, 'memory':178.22} }
+    def __init__(self, processorProfile='xeon_x5650_2_66ghz'):
         self.cache_miss_weights = powerMonitor.processor_profiles[processorProfile]
 
     @staticmethod
@@ -26,9 +28,6 @@ class powerMonitor():
         return int(number_string)
 
     def return_weighted_cycles(self, output):
-        print("==========OUTPUT BEGIN==========:")
-        print(output)
-        print("==========OUTPUT END==========:")
         l1_cache_accesses, l3_cache_accesses, memory_accesses = None, None, None
         for line in output.split('\n'):
             if 'D   refs' in line:
@@ -77,9 +76,14 @@ class powerMonitor():
                 with open(log_file_name, 'r') as file:
                     output = file.read()
                 os.remove(log_file_name)
+
             except:
                 print('unable to load log file')
-
+            try:
+                for file in glob('cachegrind.out.*'):
+                    os.remove(file)
+            except:
+                print("failed to remove cachegrind.out")
             try:
                 return self.return_weighted_cycles(output)
             except:

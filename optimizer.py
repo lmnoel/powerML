@@ -171,7 +171,7 @@ def save_model_to_json(file_name, model):
 
 
 class Optimizer:
-    def __init__(self, model_type, data_filename, cost=False, epochs=5):
+    def __init__(self, model_type, data_filename, cost=False, epochs=5, alpha=0.003, beta=0.002):
         """
         Class for testing accuracy, training cost (CPU cycles), and inference cost (CPU cycles) of different neural
         network architectures.
@@ -179,6 +179,8 @@ class Optimizer:
         :param data_filename: Choose 'mnist' (full Keras version) or 'mnist_small' (just 0s and 1s) datasets
         :param cost: Boolean for measuring training and inference cost
         :param epochs: Number of training epochs
+        :param alpha: Coefficient for the weight of training CPU cost in objectuve
+        :param beta: Coefficient for the weight of inference CPU cost in objective
         """
         self.power_monitor = powerMonitor()
         self.config_filename = 'configs.json'  # Filename for hyperparameters
@@ -191,6 +193,11 @@ class Optimizer:
         self.architecture_file = open(get_architecture_file_name(), 'w')  # File name for recording model and parameters
         self.cost = cost
         self.epochs = epochs
+        self.alpha = alpha
+        self.beta = beta
+        assert self.alpha >= 0 and self.beta >= 0, 'alpha and beta must be greater than 0.0'
+        self.gamma = 1 - alpha - beta
+        assert self.gamma >= 0, 'alpha + beta must be less than 1.0'
 
     def run(self, iterations, num_layers=None, layer_widths=None, num_filters=None, filter_sizes=None, batch_size=None):
         """
@@ -320,6 +327,7 @@ class Optimizer:
         # Record Keras model used for this iteration
         current_model = load_model_from_json(self.model_filename)
         self.architecture_file.write('Iteration ' + str(self.iteration_index) + '\n')
+        print("Iteration: ", self.iteration_index)
         current_model.summary(print_fn=lambda x: self.architecture_file.write(x + '\n'))
         self.architecture_file.write('\n')
 
@@ -337,11 +345,17 @@ class Optimizer:
 
         # If costs are being computed, return a linear combination along with model_score (accuracy)
         # Normalization for cost is currently set to 15e9 based on typical values for the mnist_small dataset
-        if training_cost is not None and inference_cost is not None:
-            return -1.0 * model_score + (training_cost + inference_cost) / 15000000000.0
-        # If no costs computed, just return the negative of the accuracy
-        else:
+        if self.iteration_index == 1:
             return -1.0 * model_score
+        else:
+            RECORDS_SCORE = 3
+            RECORDS_TRAIN_COST = 1
+            RECORDS_INFERENCE_COST = 2
+            model_score_delta = self.records[-1][RECORDS_SCORE] - self.records[-2][RECORDS_SCORE]
+            train_cost_delta = self.records[-1][RECORDS_TRAIN_COST] - self.records[-2][RECORDS_TRAIN_COST]
+            inference_cost_delta = self.records[-1][RECORDS_INFERENCE_COST] - self.records[-2][RECORDS_INFERENCE_COST]
+            return -1.0 * self.gamma * model_score_delta + train_cost_delta * self.alpha + inference_cost_delta * self.beta
+
 
     def log_record(self, iteration, training_cost, inference_cost, model_score):
         """
@@ -361,19 +375,21 @@ class Optimizer:
         """
         # From here: https://matplotlib.org/2.1.1/gallery/mplot3d/scatter3d.html
         # from mpl_toolkits.mplot3d import Axes3D
-        # import matplotlib.pyplot as plt
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        # for record in self.records:
-        #     iteration, training_cost, inference_cost, model_score = record
-        #     ax.scatter(iteration, inference_cost, model_score, c='r', marker='o', alpha=model_score ** 3)
-        #     ax.scatter(iteration, training_cost, model_score, c='b', marker='o', alpha=model_score ** 3)
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import axes3d, Axes3D
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        #ax = fig.add_subplot(111, projection='3d')
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, inference_cost, model_score, c='r', marker='o', alpha=model_score ** 3)
+            ax.scatter(iteration, training_cost, model_score, c='b', marker='o', alpha=model_score ** 3)
 
-        # ax.set_xlabel('Iterations')
-        # ax.set_ylabel('Cost--inference in red, training in blue \n(Processor Cycles)')
-        # ax.set_zlabel('Accuracy')
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Processor Cycles')
+        ax.set_zlabel('Accuracy')
 
-        # plt.savefig(self.get_fig_name())
+        plt.savefig(get_fig_name())
         df = pd.DataFrame(self.records)
         df.to_csv(get_file_name())
 
@@ -384,10 +400,12 @@ def get_architecture_file_name():
     :return: File name
     """
     counter = 0
-    file_name = 'architecture_0.txt'
+    if not os.path.exists("architecture/"):
+        os.mkdir("architecture/")
+    file_name = 'architecture/architecture_0.txt'
     while os.path.isfile(file_name):
         counter += 1
-        file_name = 'architecture_{}.txt'.format(counter)
+        file_name = 'architecture/architecture_{}.txt'.format(counter)
     return file_name
 
 
@@ -397,10 +415,12 @@ def get_file_name():
     :return: File name
     """
     counter = 0
-    file_name = 'report_0.csv'
+    if not os.path.exists('reports/'):
+        os.mkdir('reports/')
+    file_name = 'reports/report_0.csv'
     while os.path.isfile(file_name):
         counter += 1
-        file_name = 'report_{}.csv'.format(counter)
+        file_name = 'reports/report_{}.csv'.format(counter)
     return file_name
 
 
@@ -410,10 +430,12 @@ def get_fig_name():
     :return:
     """
     counter = 0
-    fig_name = 'figure_0.png'
+    if not os.path.exists("figures/"):
+        os.mkdir("figures/")
+    fig_name = 'figures/figure_0.png'
     while os.path.isfile(fig_name):
         counter += 1
-        fig_name = 'figure_{}.png'.format(counter)
+        fig_name = 'figures/figure_{}.png'.format(counter)
     return fig_name
 
 
