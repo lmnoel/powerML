@@ -20,7 +20,8 @@ class SearchSpace:
     def __init__(self, model_type, data_filename):
         """
         Defines a fully-connected or convolutional neural network architecture and its hyperparameters.
-        :param model_type: Choose a 'dense' (fully-connected) or 'conv' (convolutional) network structure
+        :param model_type: Choose a 'dense_rectangle' (fully-connected), 'dense_triangle' (fully connected) 
+            or 'conv' (convolutional) network structure
         :param data_filename: Choose 'mnist' (full Keras version) or 'mnist_small' (just 0s and 1s) datasets
         """
         self.model_type = model_type
@@ -36,7 +37,7 @@ class SearchSpace:
         :return: Keras model
         """
 
-        if self.model_type == 'dense':
+        if self.model_type == 'dense_rectangle':
 
             if num_layers is None:
                 # Select random number of layers
@@ -60,7 +61,31 @@ class SearchSpace:
                 model.add(Dense(2, kernel_initializer='uniform', activation='softmax'))
             else:
                 sys.exit('Choose mnist or mnist_small for data filename')
+        elif self.model_type == 'dense_triangle':
 
+            if num_layers is None:
+                # Select random number of layers
+                max_layers = 10
+                num_layers = np.random.randint(1, max_layers)
+
+            if layer_widths is None:
+                # Select random widths for the layers
+                max_width = 32
+                start_layer_width = np.random.randint(16, max_width)
+
+            # Construct a dense network for the Keras MNIST dataset
+            model = Sequential()
+            model.add(Flatten(input_shape=(28, 28)))
+            for _ in range(num_layers):
+                model.add(Dense(layer_width, kernel_initializer='uniform', activation='relu'))
+                start_layer_width *= 2
+            if self.data_filename == 'mnist':
+                model.add(Dense(10, kernel_initializer='uniform', activation='softmax'))
+            # Output layer for data_filename='mnist_small', which only contains images of 0s and 1s
+            elif self.data_filename == 'mnist_small':
+                model.add(Dense(2, kernel_initializer='uniform', activation='softmax'))
+            else:
+                sys.exit('Choose mnist or mnist_small for data filename')
         elif self.model_type == 'conv':
 
             if num_layers is None:
@@ -95,7 +120,7 @@ class SearchSpace:
                 model.add(Dense(2, kernel_initializer='uniform', activation='softmax'))
 
         else:
-            sys.exit('Choose dense or conv for model_type')
+            sys.exit('Choose dense_rectangle, dense_triangle or conv for model_type')
 
         return model
 
