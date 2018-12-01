@@ -410,7 +410,7 @@ class Optimizer:
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Processor Cycles')
         ax.set_zlabel('Accuracy')
-        ax.set_title('{} network, All Axes', self.model_type)
+        ax.set_title('{} network, All Axes'.format(self.model_type))
 
         plt.savefig(get_fig_name("all_axes"))
 
@@ -423,8 +423,8 @@ class Optimizer:
 
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Processor Cycles')
-        ax.set_title('{} network, Iterations x Training Processor Cycles', self.model_type)
-        plt.savefig(get_fig_name("iteration_x_cost"))
+        ax.set_title('{} network, Iterations x Training Processor Cycles'.format(self.model_type))
+        plt.savefig(get_fig_name("iteration_x_train_cost"))
     
     def generate_iteration_x_inference_cost(self):
         fig = plt.figure()
@@ -435,8 +435,8 @@ class Optimizer:
 
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Processor Cycles')
-        ax.set_title('{} network, Iterations x Inference Processor Cycles', self.model_type)
-        plt.savefig(get_fig_name("iteration_x_cost"))
+        ax.set_title('{} network, Iterations x Inference Processor Cycles'.format(self.model_type))
+        plt.savefig(get_fig_name("iteration_x_inference_cost"))
 
     def generate_iteration_x_score(self):
         fig = plt.figure()
@@ -447,7 +447,7 @@ class Optimizer:
 
         ax.set_xlabel('Iterations')
         ax.set_ylabel('Model Accuracy')
-        ax.set_title('{} network, Iterations x Model Accuracy', self.model_type)
+        ax.set_title('{} network, Iterations x Model Accuracy'.format(self.model_type))
         plt.savefig(get_fig_name("iteration_x_score"))
 
     def generate_report(self):
@@ -460,7 +460,8 @@ class Optimizer:
         # from mpl_toolkits.mplot3d import Axes3D
         self.generate_all_axes_fig()
         self.generate_iteration_x_score()
-        self.generate_iteration_x_cost()
+        self.generate_iteration_x_train_cost()
+        self.generate_iteration_x_inference_cost()
         
         df = pd.DataFrame(self.records)
         df.to_csv(get_file_name())
