@@ -24,7 +24,7 @@ test.bayesian_opt(iterations=3)
 
 
 # Choose model type and dataset
-test = Optimizer(model_type='dense', data_filename='mnist', epochs=2, cost=True)
+test = Optimizer(model_type='dense_rectangle', data_filename='mnist', epochs=2, cost=True)
 
 # Run tests
 result = test.bayesian_opt(iterations=100)

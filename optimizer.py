@@ -68,16 +68,13 @@ class SearchSpace:
                 max_layers = 10
                 num_layers = np.random.randint(1, max_layers)
 
-            if layer_widths is None:
-                # Select random widths for the layers
-                max_width = 32
-                start_layer_width = np.random.randint(16, max_width)
+            start_layer_width = 16
 
             # Construct a dense network for the Keras MNIST dataset
             model = Sequential()
             model.add(Flatten(input_shape=(28, 28)))
             for _ in range(num_layers):
-                model.add(Dense(layer_width, kernel_initializer='uniform', activation='relu'))
+                model.add(Dense(start_layer_width, kernel_initializer='uniform', activation='relu'))
                 start_layer_width *= 2
             if self.data_filename == 'mnist':
                 model.add(Dense(10, kernel_initializer='uniform', activation='softmax'))
@@ -136,10 +133,12 @@ class SearchSpace:
         if batch_size is None:
             batch_size = 32
 
-        if self.model_type == 'dense':
+        if self.model_type == 'dense_rectangle':
 
             configs = {'epochs': epochs, 'batch_size': batch_size, 'optimizer': 'adam', 'loss': 'categorical_crossentropy'}
+        elif self.model_type == 'dense_triangle':
 
+            configs = {'epochs': epochs, 'batch_size': batch_size, 'optimizer': 'adam', 'loss': 'categorical_crossentropy'}
         elif self.model_type == 'conv':
 
             configs = {'epochs': epochs, 'batch_size': batch_size, 'optimizer': 'rmsprop',
@@ -200,7 +199,7 @@ class Optimizer:
         """
         Class for testing accuracy, training cost (CPU cycles), and inference cost (CPU cycles) of different neural
         network architectures.
-        :param model_type: Choose a 'dense' (fully-connected) or 'conv' (convolutional) network structure
+        :param model_type: Choose a 'dense_rectangle' or 'dense_triangle' (fully-connected) or 'conv' (convolutional) network structure
         :param data_filename: Choose 'mnist' (full Keras version) or 'mnist_small' (just 0s and 1s) datasets
         :param cost: Boolean for measuring training and inference cost
         :param epochs: Number of training epochs
@@ -214,7 +213,7 @@ class Optimizer:
         self.records = []  # Save records of training cost, inference cost, and model accuracy
         self.data_filename = data_filename  # Filename for training/test data
         self.iteration_index = 0  # Keep track of iterations from bayesian_opt function
-        self.model_type = model_type  # Choose a 'dense' (fully-connected) or 'conv' (convolutional) network structure
+        self.model_type = model_type  # Choose a 'dense_rectangle' or 'dense_triangle' (fully-connected) or 'conv' (convolutional) network structure
         self.architecture_file = open(get_architecture_file_name(), 'w')  # File name for recording model and parameters
         self.cost = cost
         self.epochs = epochs
@@ -293,14 +292,19 @@ class Optimizer:
         max_filter_size = 10
         max_batchsize = 128
 
-        if self.model_type == 'dense':
+        if self.model_type == 'dense_rectangle':
 
             space = {
                 'num_layers': 1 + hp.randint('num_layers', max_layers),
                 'layer_widths': [1 + hp.randint('layer_widths_' + str(i), max_width) for i in range(max_layers)],
                 'batch_size': 2 + hp.randint('batch_size', max_batchsize)
             }
+        elif self.model_type == 'dense_triangle':
 
+            space = {
+                'num_layers': 1 + hp.randint('num_layers', max_layers),
+                'batch_size': 2 + hp.randint('batch_size', max_batchsize)
+            }
         elif self.model_type == 'conv':
 
             space = {
@@ -311,7 +315,7 @@ class Optimizer:
             }
 
         else:
-            sys.exit('Choose dense or conv for model_type')
+            sys.exit('Choose dense_rectangle, dense_triangle or conv for model_type')
 
         # Run the optimization strategy.  tpe.suggest automatically chooses an appropriate algorithm for the
         # Bayesian optimization scheme.  fn is given the function that we want to minimize.
