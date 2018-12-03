@@ -341,7 +341,7 @@ class Optimizer:
             keylist_layer_widths.sort()
             layer_widths_optimal = []
             for i in range(num_layers_optimal):
-                layer_widths_optimal.append(tpe_best[keylist_layer_widths[i]])
+                layer_widths_optimal.append(tpe_best[keylist_layer_widths[i]] + 1)
 
             # Run this optimal model to compute CPU cycles and accuracy
             search_space = SearchSpace('dense_rectangle', self.data_filename)
@@ -388,13 +388,13 @@ class Optimizer:
             keylist_num_filters.sort()
             num_filters_optimal = []
             for i in range(num_layers_optimal):
-                num_filters_optimal.append(tpe_best[keylist_num_filters[i]])
+                num_filters_optimal.append(tpe_best[keylist_num_filters[i]] + 1)
 
             keylist_filter_sizes = [key for key in keylist if key[:12] == 'filter_sizes']
             keylist_filter_sizes.sort()
             filter_sizes_optimal = []
             for i in range(num_layers_optimal):
-                filter_sizes_optimal.append(tpe_best[keylist_filter_sizes[i]])
+                filter_sizes_optimal.append(tpe_best[keylist_filter_sizes[i]] + 1)
 
             # Run this optimal model to compute CPU cycles and accuracy
             search_space = SearchSpace('conv', self.data_filename)
