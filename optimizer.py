@@ -328,6 +328,107 @@ class Optimizer:
         # Bayesian optimization scheme.  fn is given the function that we want to minimize.
         tpe_best = fmin(fn=self.objective_function, space=space, algo=tpe.suggest, max_evals=iterations)
 
+        # Recording the power and accuracy of the optimal model
+        if self.model_type == 'dense_rectangle':
+
+            # Extract the optimal batch size and number of layers from the bayesian optimization algorithm
+            batch_size_optimal = tpe_best['batch_size'] + 1
+            num_layers_optimal = tpe_best['num_layers'] + 1
+
+            # Extract the optimal layer widths
+            keylist = tpe_best.keys()
+            keylist_layer_widths = [key for key in keylist if key[:5] == 'layer']
+            keylist_layer_widths.sort()
+            layer_widths_optimal = []
+            for i in range(num_layers_optimal):
+                layer_widths_optimal.append(tpe_best[keylist_layer_widths[i]])
+
+            # Run this optimal model to compute CPU cycles and accuracy
+            search_space = SearchSpace('dense_rectangle', self.data_filename)
+
+            search_space.create_next_model_iteration(self.config_filename, self.model_filename, self.epochs,
+                                                     num_layers=num_layers_optimal, layer_widths=layer_widths_optimal,
+                                                     batch_size=batch_size_optimal)
+
+            training_cost = self.power_monitor.measure_training_efficiency(self.model_filename,
+                                                                           self.data_filename,
+                                                                           self.config_filename,
+                                                                           self.weights_filename,
+                                                                           self.model_type,
+                                                                           self.cost)
+
+            inference_cost, model_score = self.power_monitor.measure_inference_efficiency(self.model_filename,
+                                                                                          self.data_filename,
+                                                                                          self.config_filename,
+                                                                                          self.weights_filename,
+                                                                                          self.model_type,
+                                                                                          self.cost)
+
+            print('The optimal model according to tpe_best has the following hyperparameters:')
+            print('Batch size: '+str(batch_size_optimal))
+            print('Number of layers: '+str(num_layers_optimal))
+            print('Layer widths: ' + '[%s]'%', '.join(map(str, layer_widths_optimal)))
+            print('  ')
+
+            print('This model has the following costs and accuracy: ')
+            print('Training cost: '+str(training_cost))
+            print('Inference cost: '+str(inference_cost))
+            print('Model score: '+str(model_score))
+
+        elif self.model_type == 'conv':
+
+            # Extract the optimal batch size, number of layers, and number of filters from the bayesian optimization
+            # algorithm
+            batch_size_optimal = tpe_best['batch_size'] + 1
+            num_layers_optimal = tpe_best['num_layers'] + 1
+
+            # Extract the optimal number of filters
+            keylist = tpe_best.keys()
+            keylist_num_filters = [key for key in keylist if key[:11] == 'num_filters']
+            keylist_num_filters.sort()
+            num_filters_optimal = []
+            for i in range(num_layers_optimal):
+                num_filters_optimal.append(tpe_best[keylist_num_filters[i]])
+
+            keylist_filter_sizes = [key for key in keylist if key[:12] == 'filter_sizes']
+            keylist_filter_sizes.sort()
+            filter_sizes_optimal = []
+            for i in range(num_layers_optimal):
+                filter_sizes_optimal.append(tpe_best[keylist_filter_sizes[i]])
+
+            # Run this optimal model to compute CPU cycles and accuracy
+            search_space = SearchSpace('conv', self.data_filename)
+
+            search_space.create_next_model_iteration(self.config_filename, self.model_filename, self.epochs,
+                                                     num_layers=num_layers_optimal, num_filters=num_filters_optimal,
+                                                     filter_sizes=filter_sizes_optimal, batch_size=batch_size_optimal)
+
+            training_cost = self.power_monitor.measure_training_efficiency(self.model_filename,
+                                                                           self.data_filename,
+                                                                           self.config_filename,
+                                                                           self.weights_filename,
+                                                                           self.model_type,
+                                                                           self.cost)
+
+            inference_cost, model_score = self.power_monitor.measure_inference_efficiency(self.model_filename,
+                                                                                          self.data_filename,
+                                                                                          self.config_filename,
+                                                                                          self.weights_filename,
+                                                                                          self.model_type,
+                                                                                          self.cost)
+
+            print('The optimal model according to tpe_best has the following hyperparameters:')
+            print('Batch size: '+str(batch_size_optimal))
+            print('Number of layers: '+str(num_layers_optimal))
+            print('Number of filters: ' + '[%s]'%', '.join(map(str, num_filters_optimal)))
+            print('Filter sizes: ' + '[%s]' % ', '.join(map(str, filter_sizes_optimal)))
+            print('  ')
+
+            print('This model has the following costs and accuracy: ')
+            print('Training cost: '+str(training_cost))
+            print('Inference cost: '+str(inference_cost))
+            print('Model score: '+str(model_score))
+
         self.architecture_file.close()
 
         # Generate a plot and csv record of costs and accuracies for all iterations
