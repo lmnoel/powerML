@@ -14,13 +14,17 @@ import numpy as np
 import pandas as pd
 from hyperopt import hp, tpe, fmin
 import sys
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d, Axes3D
+import statistics
 
 
 class SearchSpace:
     def __init__(self, model_type, data_filename):
         """
         Defines a fully-connected or convolutional neural network architecture and its hyperparameters.
-        :param model_type: Choose a 'dense' (fully-connected) or 'conv' (convolutional) network structure
+        :param model_type: Choose a 'dense_rectangle' (fully-connected), 'dense_triangle' (fully connected) 
+            or 'conv' (convolutional) network structure
         :param data_filename: Choose 'mnist' (full Keras version) or 'mnist_small' (just 0s and 1s) datasets
         """
         self.model_type = model_type
@@ -36,7 +40,7 @@ class SearchSpace:
         :return: Keras model
         """
 
-        if self.model_type == 'dense':
+        if self.model_type == 'dense_rectangle':
 
             if num_layers is None:
                 # Select random number of layers
@@ -60,7 +64,28 @@ class SearchSpace:
                 model.add(Dense(2, kernel_initializer='uniform', activation='softmax'))
             else:
                 sys.exit('Choose mnist or mnist_small for data filename')
+        elif self.model_type == 'dense_triangle':
 
+            if num_layers is None:
+                # Select random number of layers
+                max_layers = 5
+                num_layers = np.random.randint(1, max_layers)
+
+            start_layer_width = 16
+
+            # Construct a dense network for the Keras MNIST dataset
+            model = Sequential()
+            model.add(Flatten(input_shape=(28, 28)))
+            for _ in range(num_layers):
+                model.add(Dense(start_layer_width, kernel_initializer='uniform', activation='relu'))
+                start_layer_width *= 2
+            if self.data_filename == 'mnist':
+                model.add(Dense(10, kernel_initializer='uniform', activation='softmax'))
+            # Output layer for data_filename='mnist_small', which only contains images of 0s and 1s
+            elif self.data_filename == 'mnist_small':
+                model.add(Dense(2, kernel_initializer='uniform', activation='softmax'))
+            else:
+                sys.exit('Choose mnist or mnist_small for data filename')
         elif self.model_type == 'conv':
 
             if num_layers is None:
@@ -95,7 +120,7 @@ class SearchSpace:
                 model.add(Dense(2, kernel_initializer='uniform', activation='softmax'))
 
         else:
-            sys.exit('Choose dense or conv for model_type')
+            sys.exit('Choose dense_rectangle, dense_triangle or conv for model_type')
 
         return model
 
@@ -111,10 +136,12 @@ class SearchSpace:
         if batch_size is None:
             batch_size = 32
 
-        if self.model_type == 'dense':
+        if self.model_type == 'dense_rectangle':
 
             configs = {'epochs': epochs, 'batch_size': batch_size, 'optimizer': 'adam', 'loss': 'categorical_crossentropy'}
+        elif self.model_type == 'dense_triangle':
 
+            configs = {'epochs': epochs, 'batch_size': batch_size, 'optimizer': 'adam', 'loss': 'categorical_crossentropy'}
         elif self.model_type == 'conv':
 
             configs = {'epochs': epochs, 'batch_size': batch_size, 'optimizer': 'rmsprop',
@@ -171,14 +198,16 @@ def save_model_to_json(file_name, model):
 
 
 class Optimizer:
-    def __init__(self, model_type, data_filename, cost=False, epochs=5):
+    def __init__(self, model_type, data_filename, cost=False, epochs=5, alpha=0.003, beta=0.002):
         """
         Class for testing accuracy, training cost (CPU cycles), and inference cost (CPU cycles) of different neural
         network architectures.
-        :param model_type: Choose a 'dense' (fully-connected) or 'conv' (convolutional) network structure
+        :param model_type: Choose a 'dense_rectangle' or 'dense_triangle' (fully-connected) or 'conv' (convolutional) network structure
         :param data_filename: Choose 'mnist' (full Keras version) or 'mnist_small' (just 0s and 1s) datasets
         :param cost: Boolean for measuring training and inference cost
         :param epochs: Number of training epochs
+        :param alpha: Coefficient for the weight of training CPU cost in objectuve
+        :param beta: Coefficient for the weight of inference CPU cost in objective
         """
         self.power_monitor = powerMonitor()
         self.config_filename = 'configs.json'  # Filename for hyperparameters
@@ -187,10 +216,18 @@ class Optimizer:
         self.records = []  # Save records of training cost, inference cost, and model accuracy
         self.data_filename = data_filename  # Filename for training/test data
         self.iteration_index = 0  # Keep track of iterations from bayesian_opt function
-        self.model_type = model_type  # Choose a 'dense' (fully-connected) or 'conv' (convolutional) network structure
+        self.model_type = model_type  # Choose a 'dense_rectangle' or 'dense_triangle' (fully-connected) or 'conv' (convolutional) network structure
         self.architecture_file = open(get_architecture_file_name(), 'w')  # File name for recording model and parameters
         self.cost = cost
         self.epochs = epochs
+        self.alpha = alpha
+        self.beta = beta
+        assert self.alpha >= 0 and self.beta >= 0, 'alpha and beta must be greater than 0.0'
+        self.gamma = 1 - alpha - beta
+        assert self.gamma >= 0, 'alpha + beta must be less than 1.0'
+        self.RECORDS_SCORE = 3
+        self.RECORDS_TRAIN_COST = 1
+        self.RECORDS_INFERENCE_COST = 2
 
     def run(self, iterations, num_layers=None, layer_widths=None, num_filters=None, filter_sizes=None, batch_size=None):
         """
@@ -247,6 +284,7 @@ class Optimizer:
         # Generate a plot and csv record of costs and accuracies for all iterations
         self.generate_report()
 
+
     def bayesian_opt(self, iterations):
         """
         Function for managing a Bayesian hyperparameter optimization strategy.  We define a hyperparameter space to
@@ -261,14 +299,19 @@ class Optimizer:
         max_filter_size = 10
         max_batchsize = 128
 
-        if self.model_type == 'dense':
+        if self.model_type == 'dense_rectangle':
 
             space = {
                 'num_layers': 1 + hp.randint('num_layers', max_layers),
                 'layer_widths': [1 + hp.randint('layer_widths_' + str(i), max_width) for i in range(max_layers)],
                 'batch_size': 2 + hp.randint('batch_size', max_batchsize)
             }
+        elif self.model_type == 'dense_triangle':
 
+            space = {
+                'num_layers': 1 + hp.randint('num_layers', max_layers),
+                'batch_size': 2 + hp.randint('batch_size', max_batchsize)
+            }
         elif self.model_type == 'conv':
 
             space = {
@@ -279,7 +322,7 @@ class Optimizer:
             }
 
         else:
-            sys.exit('Choose dense or conv for model_type')
+            sys.exit('Choose dense_rectangle, dense_triangle or conv for model_type')
 
         # Run the optimization strategy.  tpe.suggest automatically chooses an appropriate algorithm for the
         # Bayesian optimization scheme.  fn is given the function that we want to minimize.
@@ -291,6 +334,23 @@ class Optimizer:
         self.generate_report()
 
         return 'Optimized architecture: ' + str(tpe_best)
+
+    def get_weights(self):
+        """
+        Computes weights for the score and cost components of the objective function.
+        The idea here is that we should weight the accuracy higher until it begins to
+        converge, then weight the cost (processor cycles) higher.
+        :return: weight of the cost and score components.
+        """
+        scores = [i[self.RECORDS_SCORE] for i in self.records]
+        accuracy_stdev = statistics.stdev(scores)
+        accuracy_delta_from_stddev = abs(accuracy_stdev - self.records[-1][self.RECORDS_SCORE])
+        if accuracy_delta_from_stddev == 0:
+            cost_weight = 0.5
+        else:
+            cost_weight = min(1 / accuracy_delta_from_stddev, 1.0)
+        score_weight = 1.0 - cost_weight
+        return cost_weight, score_weight
 
     def objective_function(self, kwargs):
         """
@@ -320,6 +380,7 @@ class Optimizer:
         # Record Keras model used for this iteration
         current_model = load_model_from_json(self.model_filename)
         self.architecture_file.write('Iteration ' + str(self.iteration_index) + '\n')
+        print("Iteration: ", self.iteration_index)
         current_model.summary(print_fn=lambda x: self.architecture_file.write(x + '\n'))
         self.architecture_file.write('\n')
 
@@ -337,11 +398,15 @@ class Optimizer:
 
         # If costs are being computed, return a linear combination along with model_score (accuracy)
         # Normalization for cost is currently set to 15e9 based on typical values for the mnist_small dataset
-        if training_cost is not None and inference_cost is not None:
-            return -1.0 * model_score + (training_cost + inference_cost) / 15000000000.0
-        # If no costs computed, just return the negative of the accuracy
-        else:
+        if self.iteration_index == 1:
             return -1.0 * model_score
+        else:
+            cost_weight, score_weight = self.get_weights()
+            model_score_delta = self.records[-1][self.RECORDS_SCORE] - self.records[-2][self.RECORDS_SCORE]
+            train_cost_delta = self.records[-1][self.RECORDS_TRAIN_COST] - self.records[-2][self.RECORDS_TRAIN_COST]
+            inference_cost_delta = self.records[-1][self.RECORDS_INFERENCE_COST] - self.records[-2][self.RECORDS_INFERENCE_COST]
+            return score_weight * (-1.0 * self.gamma * model_score_delta) + cost_weight * (train_cost_delta * self.alpha + inference_cost_delta * self.beta)
+
 
     def log_record(self, iteration, training_cost, inference_cost, model_score):
         """
@@ -353,6 +418,58 @@ class Optimizer:
         """
         self.records.append((iteration, training_cost, inference_cost, model_score))
 
+    def generate_all_axes_fig(self):
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        #ax = fig.add_subplot(111, projection='3d')
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, inference_cost, model_score, c='r', marker='o', alpha=model_score ** 3)
+            ax.scatter(iteration, training_cost, model_score, c='b', marker='o', alpha=model_score ** 3)
+
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Processor Cycles')
+        ax.set_zlabel('Accuracy')
+        ax.set_title('{} network, All Axes'.format(self.model_type))
+
+        plt.savefig(get_fig_name("all_axes"))
+
+    def generate_iteration_x_train_cost(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, training_cost, c='b', marker='o')
+
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Processor Cycles')
+        ax.set_title('{} network, Iterations x Training Processor Cycles'.format(self.model_type))
+        plt.savefig(get_fig_name("iteration_x_train_cost"))
+    
+    def generate_iteration_x_inference_cost(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, inference_cost, c='r', marker='o')
+
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Processor Cycles')
+        ax.set_title('{} network, Iterations x Inference Processor Cycles'.format(self.model_type))
+        plt.savefig(get_fig_name("iteration_x_inference_cost"))
+
+    def generate_iteration_x_score(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for record in self.records:
+            iteration, training_cost, inference_cost, model_score = record
+            ax.scatter(iteration, model_score, c='k', marker='o')
+
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Model Accuracy')
+        ax.set_title('{} network, Iterations x Model Accuracy'.format(self.model_type))
+        plt.savefig(get_fig_name("iteration_x_score"))
+
     def generate_report(self):
         """
         Save a 3d scatter plot to file.
@@ -361,21 +478,14 @@ class Optimizer:
         """
         # From here: https://matplotlib.org/2.1.1/gallery/mplot3d/scatter3d.html
         # from mpl_toolkits.mplot3d import Axes3D
-        # import matplotlib.pyplot as plt
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        # for record in self.records:
-        #     iteration, training_cost, inference_cost, model_score = record
-        #     ax.scatter(iteration, inference_cost, model_score, c='r', marker='o', alpha=model_score ** 3)
-        #     ax.scatter(iteration, training_cost, model_score, c='b', marker='o', alpha=model_score ** 3)
-
-        # ax.set_xlabel('Iterations')
-        # ax.set_ylabel('Cost--inference in red, training in blue \n(Processor Cycles)')
-        # ax.set_zlabel('Accuracy')
-
-        # plt.savefig(self.get_fig_name())
+        self.generate_all_axes_fig()
+        self.generate_iteration_x_score()
+        self.generate_iteration_x_train_cost()
+        self.generate_iteration_x_inference_cost()
+        
         df = pd.DataFrame(self.records)
         df.to_csv(get_file_name())
+
 
 
 def get_architecture_file_name():
@@ -384,10 +494,12 @@ def get_architecture_file_name():
     :return: File name
     """
     counter = 0
-    file_name = 'architecture_0.txt'
+    if not os.path.exists("architecture/"):
+        os.mkdir("architecture/")
+    file_name = 'architecture/architecture_0.txt'
     while os.path.isfile(file_name):
         counter += 1
-        file_name = 'architecture_{}.txt'.format(counter)
+        file_name = 'architecture/architecture_{}.txt'.format(counter)
     return file_name
 
 
@@ -397,23 +509,27 @@ def get_file_name():
     :return: File name
     """
     counter = 0
-    file_name = 'report_0.csv'
+    if not os.path.exists('reports/'):
+        os.mkdir('reports/')
+    file_name = 'reports/report_0.csv'
     while os.path.isfile(file_name):
         counter += 1
-        file_name = 'report_{}.csv'.format(counter)
+        file_name = 'reports/report_{}.csv'.format(counter)
     return file_name
 
 
-def get_fig_name():
+def get_fig_name(keyword):
     """
     Find appropriate name for the next figure file.
     :return:
     """
     counter = 0
-    fig_name = 'figure_0.png'
+    if not os.path.exists("figures/"):
+        os.mkdir("figures/")
+    fig_name = 'figures/{}_figure_0.png'.format(keyword)
     while os.path.isfile(fig_name):
         counter += 1
-        fig_name = 'figure_{}.png'.format(counter)
+        fig_name = 'figures/{}_figure_{}.png'.format(keyword, counter)
     return fig_name
 
 

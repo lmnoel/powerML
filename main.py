@@ -24,12 +24,10 @@ test.bayesian_opt(iterations=3)
 
 
 # Choose model type and dataset
-test = Optimizer(model_type='dense', data_filename='mnist', epochs=1, cost=True)
-print("loaded test")
-# Run tests
-result = test.bayesian_opt(iterations=1)
-print('finished running bayesian_opt')
+test = Optimizer(model_type='conv', data_filename='mnist', epochs=2, cost=True)
 
+# Run tests
+result = test.bayesian_opt(iterations=2)
 
 # TODO
 # Add epochs and valgrind as options to run() and bayesian_opt()
