@@ -443,23 +443,6 @@ class Optimizer:
 
         return 'Optimized architecture: ' + str(tpe_best)
 
-    def get_weights(self):
-        """
-        Computes weights for the score and cost components of the objective function.
-        The idea here is that we should weight the accuracy higher until it begins to
-        converge, then weight the cost (processor cycles) higher.
-        :return: weight of the cost and score components.
-        """
-        scores = [i[self.RECORDS_SCORE] for i in self.records]
-        accuracy_stdev = statistics.stdev(scores)
-        accuracy_delta_from_stddev = abs(accuracy_stdev - self.records[-1][self.RECORDS_SCORE])
-        if accuracy_delta_from_stddev == 0:
-            cost_weight = 0.5
-        else:
-            cost_weight = min(1 / accuracy_delta_from_stddev, 1.0)
-        score_weight = 1.0 - cost_weight
-        return cost_weight, score_weight
-
     def objective_function(self, kwargs):
         """
         Objective function for Bayesian optimization strategy
@@ -504,28 +487,27 @@ class Optimizer:
         # Update iteration number
         self.iteration_index += 1
 
-        self.log_record(self.iteration_index, training_cost, inference_cost, model_score, None)
+
         if self.iteration_index == 1:
             target_value =  -1.0 * model_score
-            print('first iteration')
+
             self.training_adjust_magnitude = training_cost
             self.inference_adjust_magnitude = inference_cost
         else:
-            #cost_weight, score_weight = self.get_weights()
             #normalize the training cost
             adjusted_train_cost = training_cost / self.training_adjust_magnitude
             #normalize the inference cost
             adjusted_inference_cost = inference_cost / self.inference_adjust_magnitude
             target_value = self.gamma * (model_score ** 2) + (-1.00) * ((adjusted_train_cost ** 2) * self.alpha + (adjusted_inference_cost ** 2) * self.beta)
             target_value *= 100
-            print('iteration_index:', self.iteration_index)
             print('model_score:', model_score)
             print('training_cost:', training_cost)
             print('adjusted_train_cost:', adjusted_train_cost)
             print('inference_cost:', inference_cost)
             print('adjusted_inference_cost:', adjusted_inference_cost)
             print('target_value:', target_value)
-        self.records[-1][4] = target_value
+
+        self.log_record(self.iteration_index, training_cost, inference_cost, model_score, target_value)
         return target_value
 
     def log_record(self, iteration, training_cost, inference_cost, model_score, target_value):
