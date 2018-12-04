@@ -1,0 +1,11 @@
+Final Report for model_type: conv, with alpha: 0.5, beta: 0.0
+The optimal model according to tpe_best has the following hyperparameters:
+Batch size: 81
+Number of layers: 6
+Number of filters:  1
+Filter sizes:  3
+  
+This model has the following costs and accuracy: 
+Training cost: 14664768241
+Inference cost: 7900156090
+Model score: 1.0
