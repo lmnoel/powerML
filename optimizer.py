@@ -481,6 +481,7 @@ class Optimizer:
         if self.iteration_index == 1:
             target_value =  (-1.0) * self.gamma * (model_score ** 2) + ( self.alpha + self.beta)
             print('first iteration')
+
             self.training_adjust_magnitude = training_cost
             self.inference_adjust_magnitude = inference_cost
         else:
@@ -497,7 +498,7 @@ class Optimizer:
             print('adjusted_inference_cost:', adjusted_inference_cost)
             print('target_value:', target_value)
         self.log_record(self.iteration_index, training_cost, inference_cost, model_score, target_value)
-        return target_value
+
 
     def log_record(self, iteration, training_cost, inference_cost, model_score, target_value):
         """
