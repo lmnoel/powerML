@@ -1,0 +1,10 @@
+Final Report for model_type: dense_rectangle, with alpha: 0.7, beta: 0.05
+The optimal model according to tpe_best has the following hyperparameters:
+Batch size: 128
+Number of layers: 7
+Layer width:  11
+  
+This model has the following costs and accuracy: 
+Training cost: 11468500017
+Inference cost: 7675440223
+Model score: 0.57

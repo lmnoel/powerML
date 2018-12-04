@@ -1,0 +1,10 @@
+The optimal model according to tpe_best has the following hyperparameters:
+Batch size: 17
+Number of layers: 8
+Layer width:  7
+  
+This model has the following costs and accuracy: 
+Training cost: 12289575896
+Inference cost: 7792226007
+Model score: 0.57
+
