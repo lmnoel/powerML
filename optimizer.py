@@ -31,13 +31,13 @@ class SearchSpace:
         self.model_type = model_type
         self.data_filename = data_filename
 
-    def get_model(self, num_layers=None, layer_width=None, num_filters=None, filter_sizes=None):
+    def get_model(self, num_layers=None, layer_width=None, num_filters=None, filter_size=None):
         """
         Creates and saves a Keras model architecture.
         :param num_layers: Number of layers for a dense network (not including fixed output layer)
         :param layer_widths: Widths for each of the num_layers
         :param num_filters: List of number of filters for convolutional layers
-        :param filter_sizes: List of square filter sizes for convolutional layers
+        :param filter_size: List of square filter sizes for convolutional layers
         :return: Keras model
         """
 
@@ -99,19 +99,18 @@ class SearchSpace:
                 max_filters = 5
                 num_filters = np.random.randint(1, max_filters, num_layers)
 
-            if filter_sizes is None:
+            if filter_size is None:
                 # Select random filter size for these layers
-                max_filter_size = 10
-                filter_sizes = np.random.randint(1, max_filter_size, num_layers)
+                filter_size = np.random.randint(1, max_filter_size)
 
             # Construct a convolutional network for the Keras MNIST dataset
             model = Sequential()
             for layer_index in range(num_layers):
                 if layer_index == 0:
-                    model.add(Conv2D(num_filters[layer_index], kernel_size=filter_sizes[layer_index], activation='relu',
+                    model.add(Conv2D(num_filters, kernel_size=filter_size, activation='relu',
                                      padding='same', input_shape=(28, 28, 1)))
                 else:
-                    model.add(Conv2D(num_filters[layer_index], kernel_size=filter_sizes[layer_index], activation='relu',
+                    model.add(Conv2D(num_filters, kernel_size=filter_size, activation='relu',
                                      padding='same'))
             model.add(Flatten())
             model.add(Dense(128, kernel_initializer='uniform', activation='relu'))
@@ -154,7 +153,7 @@ class SearchSpace:
         return configs
 
     def create_next_model_iteration(self, config_filename, model_filename, epochs, num_layers=None, layer_width=None,
-                                    num_filters=None, filter_sizes=None, batch_size=None):
+                                    num_filters=None, filter_size=None, batch_size=None):
         """
         Save a model architecture and set of configurations to JSON files.
         :param config_filename: File name for configs JSON file
@@ -163,11 +162,11 @@ class SearchSpace:
         :param num_layers: Number of layers for a dense network (not including fixed output layer)
         :param layer_width: Widths for each of the num_layers
         :param num_filters: List of number of filters for convolutional layers
-        :param filter_sizes: List of square filter sizes for convolutional layers
+        :param filter_size: List of square filter sizes for convolutional layers
         :param batch_size: Batch size for training and testing
         """
         next_model = self.get_model(num_layers=num_layers, layer_width=layer_width, num_filters=num_filters,
-                                    filter_sizes=filter_sizes)
+                                    filter_size=filter_size)
         save_model_to_json(model_filename, next_model)
         next_configs = self.get_configs(epochs, batch_size=batch_size)
         save_configs_to_json(config_filename, next_configs)
@@ -199,7 +198,7 @@ def save_model_to_json(file_name, model):
 
 
 class Optimizer:
-    def __init__(self, model_type, data_filename, cost=False, epochs=5, alpha=0.3, beta=0.05):
+    def __init__(self, model_type, data_filename, epochs, alpha, beta, cost=True):
         """
         Class for testing accuracy, training cost (CPU cycles), and inference cost (CPU cycles) of different neural
         network architectures.
@@ -232,7 +231,7 @@ class Optimizer:
         self.inference_adjust_magnitude = None
         self.training_adjust_magnitude = None
 
-    def run(self, iterations, num_layers=None, layer_width=None, num_filters=None, filter_sizes=None, batch_size=None):
+    def run(self, iterations, num_layers=None, layer_width=None, num_filters=None, filter_size=None, batch_size=None):
         """
         Function for managing creation of network architectures and computing network costs and accuracies using either
         random search or a single fixed network architecture.  If num_layers and layer_width are left as None, then
@@ -243,13 +242,13 @@ class Optimizer:
         :param num_layers: Number of layers for a dense network (not including fixed output layer)
         :param layer_width: Widths for each of the num_layers
         :param num_filters: List of number of filters for convolutional layers
-        :param filter_sizes: List of square filter sizes for convolutional layers
+        :param filter_size: List of square filter sizes for convolutional layers
         :param batch_size: Batch size for training and testing
         """
         search_space = SearchSpace(self.model_type, self.data_filename)
         for current_iteration in range(iterations):
             search_space.create_next_model_iteration(self.config_filename, self.model_filename, self.epochs, num_layers,
-                                                     layer_width, num_filters, filter_sizes, batch_size)
+                                                     layer_width, num_filters, filter_size, batch_size)
 
             training_cost = self.power_monitor.measure_training_efficiency(self.model_filename,
                                                                            self.data_filename,
@@ -294,6 +293,7 @@ class Optimizer:
         :param tpe_best: dictionary spec of optimal model architecture/hyper parameters
         """
         # Recording the power and accuracy of the optimal model
+        
         if self.model_type == 'dense_rectangle' or self.model_type == 'dense_triangle':
 
             # Extract the optimal batch size and number of layers from the bayesian optimization algorithm
@@ -301,9 +301,10 @@ class Optimizer:
             num_layers_optimal = tpe_best['num_layers'] + 1
 
             # Extract the optimal layer widths
-            keylist = tpe_best.keys()
-     
-            optimal_layer_width = tpe_best['layer_width']
+            if self.model_type == 'dense_rectangle':
+                optimal_layer_width = tpe_best['layer_width']
+            else:
+                optimal_layer_width = None
             # Run this optimal model to compute CPU cycles and accuracy
             search_space = SearchSpace(self.model_type, self.data_filename)
 
@@ -324,7 +325,7 @@ class Optimizer:
                                                                                           self.weights_filename,
                                                                                           self.model_type,
                                                                                           self.cost)
-
+            print('Final Report for model_type: {}, with alpha: {}, beta: {}'.format(self.model_type, self.alpha, self.beta))
             print('The optimal model according to tpe_best has the following hyperparameters:')
             print('Batch size: '+str(batch_size_optimal))
             print('Number of layers: '+str(num_layers_optimal))
@@ -342,27 +343,15 @@ class Optimizer:
             # algorithm
             batch_size_optimal = tpe_best['batch_size'] + 1
             num_layers_optimal = tpe_best['num_layers'] + 1
-
-            # Extract the optimal number of filters
-            keylist = tpe_best.keys()
-            keylist_num_filters = [key for key in keylist if key[:11] == 'num_filters']
-            keylist_num_filters.sort()
-            num_filters_optimal = []
-            for i in range(num_layers_optimal):
-                num_filters_optimal.append(tpe_best[keylist_num_filters[i]] + 1)
-
-            keylist_filter_sizes = [key for key in keylist if key[:12] == 'filter_sizes']
-            keylist_filter_sizes.sort()
-            filter_sizes_optimal = []
-            for i in range(num_layers_optimal):
-                filter_sizes_optimal.append(tpe_best[keylist_filter_sizes[i]] + 1)
+            filter_size_optimal = tpe_best['filter_size'] + 1
+            num_filters_optimal = tpe_best['num_filters']
 
             # Run this optimal model to compute CPU cycles and accuracy
             search_space = SearchSpace('conv', self.data_filename)
 
             search_space.create_next_model_iteration(self.config_filename, self.model_filename, self.epochs,
                                                      num_layers=num_layers_optimal, num_filters=num_filters_optimal,
-                                                     filter_sizes=filter_sizes_optimal, batch_size=batch_size_optimal)
+                                                     filter_size=filter_size_optimal, batch_size=batch_size_optimal)
 
             training_cost = self.power_monitor.measure_training_efficiency(self.model_filename,
                                                                            self.data_filename,
@@ -378,11 +367,12 @@ class Optimizer:
                                                                                           self.model_type,
                                                                                           self.cost)
 
+            print('Final Report for model_type: {}, with alpha: {}, beta: {}'.format(self.model_type, self.alpha, self.beta))
             print('The optimal model according to tpe_best has the following hyperparameters:')
             print('Batch size: '+str(batch_size_optimal))
             print('Number of layers: '+str(num_layers_optimal))
-            print('Number of filters: ' + '[%s]'%', '.join(map(str, num_filters_optimal)))
-            print('Filter sizes: ' + '[%s]' % ', '.join(map(str, filter_sizes_optimal)))
+            print('Number of filters: ', num_filters_optimal)
+            print('Filter sizes: ', filter_size_optimal)
             print('  ')
 
             print('This model has the following costs and accuracy: ')
@@ -425,8 +415,8 @@ class Optimizer:
 
             space = {
                 'num_layers': 1 + hp.randint('num_layers', max_layers),
-                'num_filters': [1 + hp.randint('num_filters_' + str(i), max_filters) for i in range(max_layers)],
-                'filter_sizes': [1 + hp.randint('filter_sizes_' + str(i), max_filter_size) for i in range(max_layers)],
+                'num_filters': 1 + hp.randint('num_filters', max_filters),
+                'filter_size': 1 + hp.randint('filter_size', max_filter_size),
                 'batch_size': 2 + hp.randint('batch_size', max_batchsize)
             }
 
@@ -442,23 +432,6 @@ class Optimizer:
         self.generate_report()
 
         return 'Optimized architecture: ' + str(tpe_best)
-
-    def get_weights(self):
-        """
-        Computes weights for the score and cost components of the objective function.
-        The idea here is that we should weight the accuracy higher until it begins to
-        converge, then weight the cost (processor cycles) higher.
-        :return: weight of the cost and score components.
-        """
-        scores = [i[self.RECORDS_SCORE] for i in self.records]
-        accuracy_stdev = statistics.stdev(scores)
-        accuracy_delta_from_stddev = abs(accuracy_stdev - self.records[-1][self.RECORDS_SCORE])
-        if accuracy_delta_from_stddev == 0:
-            cost_weight = 0.5
-        else:
-            cost_weight = min(1 / accuracy_delta_from_stddev, 1.0)
-        score_weight = 1.0 - cost_weight
-        return cost_weight, score_weight
 
     def objective_function(self, kwargs):
         """
@@ -504,28 +477,26 @@ class Optimizer:
         # Update iteration number
         self.iteration_index += 1
 
-        self.log_record(self.iteration_index, training_cost, inference_cost, model_score, None)
+        
         if self.iteration_index == 1:
-            target_value =  -1.0 * model_score
+            target_value =  (-1.0) * self.gamma * (model_score ** 2) + ( self.alpha + self.beta)
             print('first iteration')
             self.training_adjust_magnitude = training_cost
             self.inference_adjust_magnitude = inference_cost
         else:
-            #cost_weight, score_weight = self.get_weights()
             #normalize the training cost
             adjusted_train_cost = training_cost / self.training_adjust_magnitude
             #normalize the inference cost
             adjusted_inference_cost = inference_cost / self.inference_adjust_magnitude
-            target_value = self.gamma * (model_score ** 2) + (-1.00) * ((adjusted_train_cost ** 2) * self.alpha + (adjusted_inference_cost ** 2) * self.beta)
+            target_value = (-1.0) * self.gamma * (model_score ** 2) + ((adjusted_train_cost ** 2) * self.alpha + (adjusted_inference_cost ** 2) * self.beta)
             target_value *= 100
-            print('iteration_index:', self.iteration_index)
             print('model_score:', model_score)
             print('training_cost:', training_cost)
             print('adjusted_train_cost:', adjusted_train_cost)
             print('inference_cost:', inference_cost)
             print('adjusted_inference_cost:', adjusted_inference_cost)
             print('target_value:', target_value)
-        self.records[-1][4] = target_value
+        self.log_record(self.iteration_index, training_cost, inference_cost, model_score, target_value)
         return target_value
 
     def log_record(self, iteration, training_cost, inference_cost, model_score, target_value):
