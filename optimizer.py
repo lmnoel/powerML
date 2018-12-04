@@ -425,8 +425,9 @@ class Optimizer:
 
         # Run the optimization strategy.  tpe.suggest automatically chooses an appropriate algorithm for the
         # Bayesian optimization scheme.  fn is given the function that we want to minimize.
+   
         tpe_best = fmin(fn=self.objective_function, space=space, algo=tpe.suggest, max_evals=iterations)
-
+     
         # Generate a plot and csv record of costs and accuracies for all iterations
         self.report_tpe_best(tpe_best)
         self.generate_report()
@@ -498,7 +499,7 @@ class Optimizer:
             print('adjusted_inference_cost:', adjusted_inference_cost)
             print('target_value:', target_value)
         self.log_record(self.iteration_index, training_cost, inference_cost, model_score, target_value)
-
+        return target_value
 
     def log_record(self, iteration, training_cost, inference_cost, model_score, target_value):
         """

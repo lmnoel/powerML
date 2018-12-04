@@ -1,3 +1,4 @@
+from __future__ import print_function
 from keras.models import model_from_json
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import to_categorical
@@ -141,8 +142,7 @@ def test_model(model_name, data_name, config_name, weights_name, model_type):
     print('done testing model')
 
 if __name__=="__main__":
-    print('in main of runModel.py')
-    print('sys.argv is:', sys.argv)
+
     if sys.argv[1] == 'train':
         assert(len(sys.argv) == 7), 'Incorrect number of arguments'
         train_model(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])

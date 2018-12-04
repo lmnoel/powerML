@@ -67,7 +67,8 @@ class powerMonitor():
             try:
                 subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
                                                     '--log-file={}'.format(log_file_name),
-                                                  './runPythonScript', 'runModel.py' , type_,
+                                                    '--suppressions=valgrind-python.supp',
+                                                  'python', 'runModel.py' , type_,
                                                   model_file, data_file, config_file, weights_file, model_type])
 
             except:
