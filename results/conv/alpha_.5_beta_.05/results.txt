@@ -1,3 +1,4 @@
+Final Report for model_type: conv, with alpha: 0.5, beta: 0.05
 The optimal model according to tpe_best has the following hyperparameters:
 Batch size: 59
 Number of layers: 3

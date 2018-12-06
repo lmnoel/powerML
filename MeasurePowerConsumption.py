@@ -44,6 +44,33 @@ class powerMonitor():
                l3_cache_accesses * self.cache_miss_weights['l3'] +
                memory_accesses * self.cache_miss_weights['memory'])
 
+    def measure_synthetic_load(self, load_type):
+        try:
+            log_file_name = 'temp_log'
+            subpoutput = subprocess.check_output(['valgrind', '--tool=cachegrind',
+                                                    '--log-file={}'.format(log_file_name),
+                                                    '--suppressions=valgrind-python.supp',
+                                                  'python', 'synthetic_load.py' , load_type])
+        except:
+            raise Exception("Valgrind failed")
+        try:
+            with open(log_file_name, 'r') as file:
+                    output = file.read()
+                os.remove(log_file_name)
+        except:
+            raise Exception("Unable to read log file")
+        try:
+            for file in glob('cachegrind.out.*'):
+                os.remove(file)
+        except:
+            print("failed to remove cachegrind.out")
+
+        try:
+            return self.return_weighted_cycles(output)
+        except:
+            raise Exception('processorProfile is invalid')
+
+
     def measure_training_efficiency(self, model_file, data_file, config_file, weights_file, model_type, cost):
         return self.measure_model_efficiency('train', model_file, data_file, config_file, weights_file, model_type, cost)
         
