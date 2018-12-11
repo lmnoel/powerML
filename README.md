@@ -1,23 +1,20 @@
 # powerML
+Logan Noel (lnoel) and Kirk Swanson (ks8)
 
 ## Requirements: 
 
-Python packages: tensorflow, keras, ...probably some others too
+Python packages: tensorflow, keras, hyperopt, numpy, pandas, matplotlib
 
-Other: valgrind (install via homebrew)
+Other: valgrind
+Python2.7 needs to be installed from source for use with valgrind. See: https://stackoverflow.com/questions/20112989/how-to-use-valgrind-with-python
 
-
-
-## Instructions: 
-
-Run `make` to compile runPythonScript.cpp before use.
 
 ## Structure:
 
--optimizer.py: Controls everything. Uses MeasurePowerConsumption.powerMoniter. Defines the search space and does a random walk through it. 
+-optimizer.py: Uses MeasurePowerConsumption.powerMoniter and conducts a Bayesian search of the defined search space to find optimal model parameters.
 
 -MeasurePowerConsumption.py: Uses runPythonScript. Invokes cachegrind and parses results to measure cache performance of a model. Uses a processor profile to accurately reflect miss penalty of the current system. 
-
--runPythonScript.cpp: Uses runModel.py. This is required because valgrind can only invoke an executable. 
-
+ 
 -runModel.py: Load a model from file, and train it. Or, load a model from file, load the weights from file, and perform inference.
+
+-Final Paper Multicol-Report on this project for CMSC 352.
