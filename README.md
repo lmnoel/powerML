@@ -5,8 +5,7 @@ Logan Noel (lnoel) and Kirk Swanson (ks8)
 
 Python packages: tensorflow, keras, hyperopt, numpy, pandas, matplotlib
 
-Other: valgrind
-Python2.7 needs to be installed from source for use with valgrind. See: https://stackoverflow.com/questions/20112989/how-to-use-valgrind-with-python
+Other: valgrind, and Python2.7, which needs to be installed from source for use with valgrind. See: https://stackoverflow.com/questions/20112989/how-to-use-valgrind-with-python
 
 
 ## Structure:
